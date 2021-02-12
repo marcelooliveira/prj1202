@@ -1,65 +1,96 @@
-import Head from 'next/head'
-import styles from '../styles/Home.module.css'
+import React, { useState, useEffect } from 'react';
+// import { data as roomData } from '../data/data.js'
+import Layout from "../components/Layout";
+import {Row, Col} from 'react-bootstrap'
+import Card from "react-bootstrap/Card";
+import Image from 'next/image'
+import { faHome as fasHome, faBed as fasBed, faBath as fasBath, faCar as fasCar } 
+    from '@fortawesome/free-solid-svg-icons';
+import { faHeart as farHeart } from '@fortawesome/free-regular-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { config } from '@fortawesome/fontawesome-svg-core'
+import { default as NumberFormat } from 'react-number-format';
+import netlifyIdentity from 'netlify-identity-widget';
+import useSWR, { mutate } from 'swr'
+import getConfig from 'next/config';
+import UploadButton from "../components/UploadButton";
+import PlayButton from "../components/PlayButton";
+import RequestButton from "../components/RequestButton";
+import PendingRequestButton from "../components/PendingRequestButton";
+import WatchVideoButton from "../components/WatchVideoButton";
 
-export default function Home() {
+const { publicRuntimeConfig } = getConfig();
+
+const fetcher = (url) => fetch(url).then((r) => r.json());
+
+const Home = () => {
+  config.autoAddCss = false
+  const [userEmail, setUserEmail] = useState('');
+  const [widgetInitialized, setWidgetInitialized] = useState(false);
+  const { data, error } = useSWR('/api/rooms/0', fetcher)
+
+  useEffect(() => {
+    if (!widgetInitialized) {
+      netlifyIdentity.on('init', () => {
+        setUserEmail(netlifyIdentity.currentUser()?.email)
+      })
+      netlifyIdentity.on('login', () => {
+        setUserEmail(netlifyIdentity.currentUser()?.email)
+      })
+      netlifyIdentity.on('logout', () => {
+        setUserEmail('')
+      })
+      netlifyIdentity.init();
+      setWidgetInitialized(true)
+    }
+  })
+
   return (
-    <div className={styles.container}>
-      <Head>
-        <title>Create Next App</title>
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
+    <Layout>
+      <div className="center-panel">
+        <h3>Rooms Available</h3>
+        <Row>
+          {data && data.map((room) => {
 
-      <main className={styles.main}>
-        <h1 className={styles.title}>
-          Welcome to <a href="https://nextjs.org">Next.js!</a>
-        </h1>
-
-        <p className={styles.description}>
-          Get started by editing{' '}
-          <code className={styles.code}>pages/index.js</code>
-        </p>
-
-        <div className={styles.grid}>
-          <a href="https://nextjs.org/docs" className={styles.card}>
-            <h3>Documentation &rarr;</h3>
-            <p>Find in-depth information about Next.js features and API.</p>
-          </a>
-
-          <a href="https://nextjs.org/learn" className={styles.card}>
-            <h3>Learn &rarr;</h3>
-            <p>Learn about Next.js in an interactive course with quizzes!</p>
-          </a>
-
-          <a
-            href="https://github.com/vercel/next.js/tree/master/examples"
-            className={styles.card}
-          >
-            <h3>Examples &rarr;</h3>
-            <p>Discover and deploy boilerplate example Next.js projects.</p>
-          </a>
-
-          <a
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-          >
-            <h3>Deploy &rarr;</h3>
-            <p>
-              Instantly deploy your Next.js site to a public URL with Vercel.
-            </p>
-          </a>
-        </div>
-      </main>
-
-      <footer className={styles.footer}>
-        <a
-          href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Powered by{' '}
-          <img src="/vercel.svg" alt="Vercel Logo" className={styles.logo} />
-        </a>
-      </footer>
-    </div>
-  )
+            return (
+              <Col key={room.number} id="hits" className="col-xs-12 col-sm-6 col-md-4 p-3">
+                <Card className="shadow">
+                  <Image src={room.pic} className="card-img-top img-estate" width={500} height={333}></Image>
+                  <Card.Body>
+                    <h5 className="card-title">
+                      <NumberFormat value={room.price} displayType={'text'} thousandSeparator={true} prefix={'$'} />
+                      &nbsp; /&nbsp; week
+                      <FontAwesomeIcon icon={farHeart} className="text-danger float-right" />
+                    </h5>
+                    <Card.Text><b>{room.address}</b></Card.Text>
+                    {/* <Card.Text><b>{JSON.stringify(room)}</b></Card.Text> */}
+                    <Card.Text><b>owner: {room.owner}</b></Card.Text>
+                    <Card.Text className="description" title="{realEstate.description}">
+                      <b>
+                        <FontAwesomeIcon icon={fasBed} />
+                        <span>&nbsp;{room.bedrooms}&nbsp;</span>
+                        <FontAwesomeIcon icon={fasBath} />
+                        <span>&nbsp;{room.bathrooms}&nbsp;</span>
+                        <FontAwesomeIcon icon={fasCar} />
+                        <span>&nbsp;{room.cars}&nbsp;</span>
+                      </b>
+                    </Card.Text>
+                    <Card.Text>
+                      <UploadButton userEmail={userEmail} room={room}/>
+                      <PlayButton userEmail={userEmail} room={room}/>
+                      <RequestButton userEmail={userEmail} room={room}/>
+                      <PendingRequestButton userEmail={userEmail} room={room}/>
+                      <WatchVideoButton userEmail={userEmail} room={room}/>
+                    </Card.Text>
+                  </Card.Body>
+                </Card>
+              </Col>
+            );
+          })}
+        </Row>
+      </div>
+    </Layout>
+  );
 }
+
+export default Home
